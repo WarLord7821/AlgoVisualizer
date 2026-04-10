@@ -1,5 +1,6 @@
 package com.algovisualizer.algorithms;
 
+import com.algovisualizer.SortingCanvas;
 import javafx.application.Platform;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
@@ -39,28 +40,8 @@ public class BubbleSort implements Algorithm {
     }
 
     private void updateUI(int activeIndex1, int activeIndex2) {
-        Platform.runLater(() -> {
-            canvas.getChildren().clear();
-
-            double width = canvas.getWidth() / array.length;
-
-            for (int i = 0; i < array.length; i++) {
-                Rectangle bar = new Rectangle(
-                        i * width,
-                        canvas.getHeight() - array[i],
-                        width - 2,
-                        array[i]
-                );
-
-                if (i == activeIndex1 || i == activeIndex2) {
-                    bar.setStyle("-fx-fill: red;");
-                } else {
-                    bar.setStyle("-fx-fill: blue;");
-                }
-
-                canvas.getChildren().add(bar);
-            }
-        });
+        // Cast the generic Pane to our custom SortingCanvas and pass the data
+        ((SortingCanvas) canvas).drawArray(array, activeIndex1, activeIndex2);
     }
 
     private void sleep() {

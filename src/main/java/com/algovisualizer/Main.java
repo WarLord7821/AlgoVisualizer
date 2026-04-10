@@ -1,102 +1,137 @@
 package com.algovisualizer;
 
+import com.algovisualizer.algorithms.Dijkstra;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import javafx.scene.layout.Pane;
-import javafx.scene.control.Button;
-import javafx.scene.control.Slider;
-import javafx.scene.layout.HBox;
 import com.algovisualizer.algorithms.BubbleSort;
 
 public class Main extends Application {
-    private Pane centerCanvas;
+
+    // Core Layout
+    private BorderPane root;
+
+    // View Components
+    private SortingCanvas sortingCanvas;
+    private GridCanvas gridCanvas;
+    private ControlPanel controlPanel;
+
+    // Backend/Data
+    private DatabaseHelper dbHelper;
+    private int[] currentArray;
+
     @Override
     public void start(Stage stage) {
-        BorderPane root = new BorderPane();
+        // Initialize Database
+        dbHelper = new DatabaseHelper();
+        dbHelper.createTablesIfNotExist();
 
-        // Top → Header
-        root.setTop(createHeader());
+        root = new BorderPane();
 
-        // Center → Visualization Area (Mazin)
-        root.setCenter(createCenter());
+        // Initialize Components
+        sortingCanvas = new SortingCanvas();
+        gridCanvas = new GridCanvas();
+        controlPanel = new ControlPanel();
 
-        // Bottom → Controls (Pawan)
-        root.setBottom(createControls());
+        // Mount Default Components (Starts on Sorting View)
+        root.setCenter(sortingCanvas);
+        root.setBottom(controlPanel);
 
-        // Right → History Panel (Anushka)
-        root.setRight(createSidePanel());
+        // Bind Button Logic
+        setupEventHandlers();
 
         Scene scene = new Scene(root, 1000, 600);
-
-        stage.setTitle("Algorithm Visualizer");
+        stage.setTitle("Algorithm Visualizer - Sprint 3");
         stage.setScene(scene);
         stage.show();
     }
 
-    private Pane createHeader() {
-        Pane pane = new Pane();
-        pane.setStyle("-fx-background-color: #2c3e50;");
-        pane.setPrefHeight(50);
-        return pane;
-    }
+    private void setupEventHandlers() {
 
-    private Pane createCenter() {
-        centerCanvas = new Pane();
-        centerCanvas.setStyle("-fx-background-color: #ecf0f1;");
-        centerCanvas.setPrefSize(800, 500);
+        // 1. View Router Logic (Dropdown Listener)
+        controlPanel.getAlgoSelector().setOnAction(e -> {
+            String selectedAlgo = controlPanel.getAlgoSelector().getValue();
 
-        return centerCanvas;
-    }
-    private Pane createControls() {
-        HBox controls = new HBox(10);
-        controls.setStyle("-fx-background-color: #bdc3c7;");
-        controls.setPrefHeight(80);
+            if (selectedAlgo.contains("Sort")) {
+                root.setCenter(sortingCanvas);
+                controlPanel.getGenerateBtn().setDisable(false); // Enable random array button
+            } else if (selectedAlgo.equals("Dijkstra") || selectedAlgo.equals("BFS")) {
+                root.setCenter(gridCanvas);
+                controlPanel.getGenerateBtn().setDisable(true); // Disable for grids (users draw walls)
+            }
+        });
 
-        Button startBtn = new Button("Start");
-        Button resetBtn = new Button("Reset");
+        // 2. Generate Random Array
+        controlPanel.getGenerateBtn().setOnAction(e -> {
+            currentArray = new int[50];
+            for (int i = 0; i < currentArray.length; i++) {
+                currentArray[i] = (int) (Math.random() * 400) + 10;
+            }
+            sortingCanvas.drawArray(currentArray, -1, -1);
+        });
 
-        Slider speedSlider = new Slider(10, 500, 100);
-        speedSlider.setPrefWidth(200);
+        // 3. Play Button (Start Sort or Pathfinding)
+        controlPanel.getPlayPauseBtn().setOnAction(e -> {
+            String selectedAlgo = controlPanel.getAlgoSelector().getValue();
 
-        controls.getChildren().addAll(startBtn, resetBtn, speedSlider);
+            // --- SORTING LOGIC ---
+            if (selectedAlgo.contains("Sort")) {
+                if (currentArray == null) return;
 
-        startBtn.setOnAction(e -> {
-            int[] array = new int[50];
+                int currentSpeed = 101 - (int) controlPanel.getSpeedSlider().getValue();
 
-            // generate random values
-            for (int i = 0; i < array.length; i++) {
-                array[i] = (int) (Math.random() * 400);
+                if (selectedAlgo.equals("Bubble Sort")) {
+                    BubbleSort sort = new BubbleSort(currentArray);
+                    sort.setCanvas(sortingCanvas);
+                    sort.setSpeed(currentSpeed);
+
+                    // Dynamically update speed while running
+                    controlPanel.getSpeedSlider().valueProperty().addListener((obs, oldVal, newVal) -> {
+                        sort.setSpeed(101 - newVal.intValue());
+                    });
+
+                    // Log to database asynchronously
+                    new Thread(() -> {
+                        dbHelper.logExecution("Bubble Sort", currentArray.length, 0);
+                    }).start();
+
+                    // Start the algorithm engine
+                    Thread engineThread = new Thread(sort);
+                    engineThread.setDaemon(true);
+                    engineThread.start();
+                }
+                // (Quick Sort will be added here later)
             }
 
+            // --- PATHFINDING LOGIC ---
+            // --- PATHFINDING LOGIC ---
+            else if (selectedAlgo.equals("Dijkstra")) {
+                int currentSpeed = 101 - (int) controlPanel.getSpeedSlider().getValue();
 
-            BubbleSort sort = new BubbleSort(array);
-            sort.setCanvas(centerCanvas);
-            speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-                sort.setSpeed(newVal.intValue());
-            });
+                Dijkstra dijkstra = new Dijkstra();
+                dijkstra.setCanvas(gridCanvas);
+                dijkstra.setSpeed(currentSpeed);
 
-            Thread thread = new Thread(sort);
-            thread.setDaemon(true);
-            thread.start();
+                // Dynamically update speed
+                controlPanel.getSpeedSlider().valueProperty().addListener((obs, oldVal, newVal) -> {
+                    dijkstra.setSpeed(101 - newVal.intValue());
+                });
+
+                // Log execution (Size = total grid cells)
+                new Thread(() -> {
+                    dbHelper.logExecution("Dijkstra", gridCanvas.getRows() * gridCanvas.getCols(), 0);
+                }).start();
+
+                // Run in background thread
+                Thread pathThread = new Thread(dijkstra);
+                pathThread.setDaemon(true);
+                pathThread.start();
+            }
         });
-
-        resetBtn.setOnAction(e -> {
-            centerCanvas.getChildren().clear();
-        });
-
-        return controls;
-    }
-
-    private Pane createSidePanel() {
-        Pane pane = new Pane();
-        pane.setStyle("-fx-background-color: #95a5a6;");
-        pane.setPrefWidth(200);
-        return pane;
     }
 
     public static void main(String[] args) {
-        launch();
+        launch(args);
     }
 }
