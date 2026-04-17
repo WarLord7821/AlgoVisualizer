@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import com.algovisualizer.algorithms.BubbleSort;
+import com.algovisualizer.algorithms.Algorithm;
 
 public class Main extends Application {
 
@@ -53,10 +54,11 @@ public class Main extends Application {
         controlPanel.getAlgoSelector().setOnAction(e -> {
             String selectedAlgo = controlPanel.getAlgoSelector().getValue();
 
-            if (selectedAlgo.contains("Sort")) {
+            if (selectedAlgo.contains("Sort") || selectedAlgo.equals("Custom Sandbox")) {
                 root.setCenter(sortingCanvas);
                 controlPanel.getGenerateBtn().setDisable(false); // Enable random array button
-            } else if (selectedAlgo.equals("Dijkstra") || selectedAlgo.equals("BFS")) {
+            }
+            else if (selectedAlgo.equals("Dijkstra") || selectedAlgo.equals("BFS")) {
                 root.setCenter(gridCanvas);
                 controlPanel.getGenerateBtn().setDisable(true); // Disable for grids (users draw walls)
             }
@@ -73,10 +75,26 @@ public class Main extends Application {
 
         // 3. Play Button (Start Sort or Pathfinding)
         controlPanel.getPlayPauseBtn().setOnAction(e -> {
+            String customArrayText = controlPanel.getCustomArrayField().getText();
+            if (customArrayText != null && !customArrayText.trim().isEmpty()) {
+                try {
+                    String[] parts = customArrayText.split(",");
+                    int[] parsedArray = new int[parts.length];
+                    for (int i = 0; i < parts.length; i++) {
+                        parsedArray[i] = Integer.parseInt(parts[i].trim());
+                    }
+                    currentArray = parsedArray;
+                    sortingCanvas.drawArray(currentArray, -1, -1);
+                } catch (NumberFormatException ex) {
+                    System.err.println("Invalid custom array format.");
+                    return;
+                }
+            }
+
             String selectedAlgo = controlPanel.getAlgoSelector().getValue();
 
             // --- SORTING LOGIC ---
-            if (selectedAlgo.contains("Sort")) {
+            if (selectedAlgo.contains("Sort") || selectedAlgo.equals("Custom Sandbox")) {
                 if (currentArray == null) return;
 
                 int currentSpeed = 101 - (int) controlPanel.getSpeedSlider().getValue();
@@ -100,11 +118,32 @@ public class Main extends Application {
                     Thread engineThread = new Thread(sort);
                     engineThread.setDaemon(true);
                     engineThread.start();
+                } else if (selectedAlgo.equals("Custom Sandbox")) {
+                    String userLogic = controlPanel.getCodeEditor().getText();
+                    if (userLogic != null && !userLogic.trim().isEmpty()) {
+                        try {
+                            Algorithm customAlgo = new DynamicCompiler().compileAndLoad(userLogic, currentArray);
+                            customAlgo.setCanvas(sortingCanvas);
+                            customAlgo.setSpeed(currentSpeed);
+
+                            // Dynamically update speed while running
+                            controlPanel.getSpeedSlider().valueProperty().addListener((obs, oldVal, newVal) -> {
+                                customAlgo.setSpeed(101 - newVal.intValue());
+                            });
+
+                            // Start the algorithm engine
+                            Thread engineThread = new Thread(customAlgo);
+                            engineThread.setDaemon(true);
+                            engineThread.start();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                 }
                 // (Quick Sort will be added here later)
             }
 
-            // --- PATHFINDING LOGIC ---
+
             // --- PATHFINDING LOGIC ---
             else if (selectedAlgo.equals("Dijkstra")) {
                 int currentSpeed = 101 - (int) controlPanel.getSpeedSlider().getValue();
