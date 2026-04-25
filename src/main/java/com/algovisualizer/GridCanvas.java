@@ -5,6 +5,9 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.paint.Color;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.text.Text;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
 
 public class GridCanvas extends Pane {
     private final int ROWS = 20;
@@ -14,12 +17,16 @@ public class GridCanvas extends Pane {
     // 0 = Empty, 1 = Wall, 2 = Visited, 3 = Path, 4 = Start, 5 = End
     private int[][] gridState;
     private Rectangle[][] cells;
+    private int[][] weights;
+
+    private boolean wallDrawingEnabled = true;
 
     public GridCanvas() {
         this.setStyle("-fx-background-color: #ecf0f1;");
         this.setPrefSize(COLS * CELL_SIZE, ROWS * CELL_SIZE);
         gridState = new int[ROWS][COLS];
         cells = new Rectangle[ROWS][COLS];
+        weights = new int[ROWS][COLS];
         initializeGrid();
         setupMouseEvents();
     }
@@ -33,8 +40,14 @@ public class GridCanvas extends Pane {
 
                 cells[r][c] = rect;
                 this.getChildren().add(rect);
+
+                // Assign random weight (1-9) for all cells
+                weights[r][c] = (int) (Math.random() * 9) + 1;
             }
         }
+
+        // Display weight labels for empty cells
+        drawWeightLabels();
 
         // Set default Start (Green) and End (Red) points
         gridState[10][5] = 4;
@@ -44,12 +57,35 @@ public class GridCanvas extends Pane {
         cells[10][35].setFill(Color.web("#e74c3c"));
     }
 
+    private void drawWeightLabels() {
+        // Remove existing weight labels (Text nodes)
+        this.getChildren().removeIf(node -> node instanceof Text);
+
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                if (gridState[r][c] == 0) { // Only empty cells
+                    Text label = new Text(String.valueOf(weights[r][c]));
+                    label.setFont(Font.font("Arial", 9));
+                    label.setFill(Color.web("#bdc3c7")); // Light gray text
+                    label.setTextAlignment(TextAlignment.CENTER);
+                    // Center the text in the cell
+                    label.setX(c * CELL_SIZE + (CELL_SIZE / 2) - 3);
+                    label.setY(r * CELL_SIZE + (CELL_SIZE / 2) + 3);
+                    label.setMouseTransparent(true); // Don't block mouse events
+                    this.getChildren().add(label);
+                }
+            }
+        }
+    }
+
     private void setupMouseEvents() {
         this.setOnMouseDragged(this::handleDrawWall);
         this.setOnMouseClicked(this::handleDrawWall);
     }
 
     private void handleDrawWall(MouseEvent e) {
+        if (!wallDrawingEnabled) return;
+
         int c = (int) (e.getX() / CELL_SIZE);
         int r = (int) (e.getY() / CELL_SIZE);
 
@@ -58,6 +94,8 @@ public class GridCanvas extends Pane {
             if (gridState[r][c] != 4 && gridState[r][c] != 5) {
                 gridState[r][c] = 1; // Set as wall
                 cells[r][c].setFill(Color.web("#34495e")); // Dark grey wall
+                // Walls have no weight, refresh labels to remove this cell's label
+                Platform.runLater(this::drawWeightLabels);
             }
         }
     }
@@ -73,7 +111,12 @@ public class GridCanvas extends Pane {
         });
     }
 
+    public void setWallDrawingEnabled(boolean enabled) {
+        this.wallDrawingEnabled = enabled;
+    }
+
     public int[][] getGridState() { return gridState; }
+    public int[][] getWeights() { return weights; }
     public int getRows() { return ROWS; }
     public int getCols() { return COLS; }
 }

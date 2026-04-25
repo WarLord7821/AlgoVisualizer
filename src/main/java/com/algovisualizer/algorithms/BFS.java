@@ -1,16 +1,16 @@
 package com.algovisualizer.algorithms;
 
 import com.algovisualizer.GridCanvas;
-import java.util.PriorityQueue;
-import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.Queue;
 
-public class Dijkstra extends BaseAlgorithm {
+public class BFS extends BaseAlgorithm {
 
     private static class Node {
-        int r, c, dist;
+        int r, c;
         Node parent;
-        Node(int r, int c, int dist, Node parent) {
-            this.r = r; this.c = c; this.dist = dist; this.parent = parent;
+        Node(int r, int c, Node parent) {
+            this.r = r; this.c = c; this.parent = parent;
         }
     }
 
@@ -27,27 +27,25 @@ public class Dijkstra extends BaseAlgorithm {
         // 1. Find Start (4) and End (5) nodes
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == 4) startNode = new Node(r, c, 0, null);
-                if (grid[r][c] == 5) endNode = new Node(r, c, 0, null);
+                if (grid[r][c] == 4) startNode = new Node(r, c, null);
+                if (grid[r][c] == 5) endNode = new Node(r, c, null);
             }
         }
 
         if (startNode == null || endNode == null) return;
 
-        // 2. Setup Dijkstra Data Structures
-        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(n -> n.dist));
+        // 2. Setup BFS Data Structures
+        Queue<Node> queue = new LinkedList<>();
         boolean[][] visited = new boolean[rows][cols];
-        Node[][] parents = new Node[rows][cols];
 
-        pq.add(startNode);
+        queue.add(startNode);
+        visited[startNode.r][startNode.c] = true;
+        
         int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Up, Down, Left, Right
 
         // 3. Execution Loop
-        while (!pq.isEmpty()) {
-            Node current = pq.poll();
-
-            if (visited[current.r][current.c]) continue;
-            visited[current.r][current.c] = true;
+        while (!queue.isEmpty()) {
+            Node current = queue.poll();
 
             // If we hit the target, draw the final path!
             if (current.r == endNode.r && current.c == endNode.c) {
@@ -56,7 +54,7 @@ public class Dijkstra extends BaseAlgorithm {
             }
 
             // Mark as visited on UI (Color = Blue)
-            if (grid[current.r][current.c] != 4) {
+            if (grid[current.r][current.c] != 4 && grid[current.r][current.c] != 5) {
                 gridCanvas.updateCell(current.r, current.c, 2);
                 sleep(); // Pause so the user can watch the search expand
             }
@@ -68,7 +66,8 @@ public class Dijkstra extends BaseAlgorithm {
 
                 // Boundary check and Wall (1) check
                 if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited[nr][nc] && grid[nr][nc] != 1) {
-                    pq.add(new Node(nr, nc, current.dist + 1, current));
+                    visited[nr][nc] = true; // Mark visited as soon as it's added to queue
+                    queue.add(new Node(nr, nc, current));
                 }
             }
         }

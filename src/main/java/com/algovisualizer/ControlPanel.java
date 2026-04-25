@@ -16,6 +16,7 @@ public class ControlPanel extends VBox {
     private Button generateBtn;
     private Button stepBackBtn;
     private Button playPauseBtn;
+    private Button resetBtn;
     private Button stepForwardBtn;
     private Slider speedSlider;
     private TextField customArrayField;
@@ -30,7 +31,7 @@ public class ControlPanel extends VBox {
 
         // Algorithm Selector
         algoSelector = new ComboBox<>();
-        algoSelector.getItems().addAll("Bubble Sort", "Quick Sort", "Merge Sort", "Dijkstra", "Custom Sandbox");
+        algoSelector.getItems().addAll("Bubble Sort", "Selection Sort", "Insertion Sort", "Heap Sort", "Quick Sort", "Merge Sort", "Dijkstra", "BFS", "Prim MST", "Tree BFS", "Custom Sandbox");
         algoSelector.getSelectionModel().selectFirst();
         algoSelector.setStyle("-fx-background-radius: 5;");
 
@@ -38,6 +39,7 @@ public class ControlPanel extends VBox {
         generateBtn = createStyledButton("Generate Random", "#3498db");
         stepBackBtn = createStyledButton("Step Back", "#7f8c8d");
         playPauseBtn = createStyledButton("Play/Pause", "#2ecc71");
+        resetBtn = createStyledButton("Reset", "#e74c3c");
         stepForwardBtn = createStyledButton("Step Forward", "#7f8c8d");
 
         // Custom Array Input
@@ -54,7 +56,7 @@ public class ControlPanel extends VBox {
         topRow.setAlignment(Pos.CENTER);
         topRow.getChildren().addAll(
                 algoSelector, generateBtn, customArrayField, stepBackBtn,
-                playPauseBtn, stepForwardBtn, speedSlider
+                playPauseBtn, resetBtn, stepForwardBtn, speedSlider
         );
 
         codeEditor = new TextArea();
@@ -85,4 +87,9 @@ public class ControlPanel extends VBox {
     public Slider getSpeedSlider() { return speedSlider; }
     public TextField getCustomArrayField() { return customArrayField; }
     public TextArea getCodeEditor() { return codeEditor; }
+
+    public Button getResetBtn() { return resetBtn; }
+
+    // Returns text from the custom input field (used for custom tree input)
+    public String getCustomInputText() { return customArrayField.getText(); }
 }
